@@ -1,44 +1,86 @@
+using StaticArrays, ImageMetadata
 
-struct Point2 <: FieldVector{2,T}
-    x::T
-    y::T
+"""
+Point{1,Int,1,Int}(Point{1,Int}(1), SVector(1))
+"""
+struct Point{Np,Tp,Ns,Ts}
+    position::SVector{Np,Tp}
+    scalars::SVector{Ns,Ts}
+    function Point{Np,Tp,Ns,Ts}(p::SVector{Np,Tp}, s::SVector{Ns,Ts}) where {Np,Tp,Ns,Ts}
+        new(p, s)
+    end
 end
 
-struct Point3 <: FieldVector{3,T}
-    x::T
-    y::T
-    z::T
+function Point(p::P, s::S) where {P<:SVector, S<:SVector}
+    Point{length(p),eltype(p),length(s),eltype(s)}(p, s)
 end
 
-struct Point4 <: FieldVector{4,T}
-    x::T
-    y::T
-    z::T
-    w::T
+function Point(p::P, s::S) where {P<:SVector, S<:NTuple{N,T} where {N,T}}
+    Point{length(p),eltype(p),length(s),eltype(s)}(p, SVector{length(s),eltype(s)}(s))
 end
 
-struct Particle2{Tp,Ts,N}
-    position::Point2{Tp}
-    scalars::MVector{N,T}
+function Point(p, s) where {P<:NTuple{Np,Tp}, S<:SVector where {Np,Tp}}
+    Point{length(p),eltype(p),length(s),eltype(s)}(SVector{length(p),eltype(p)}(p), SVector{length(s),eltype(s)}(s))
 end
 
-struct Particle3{Tp,Ts,N}
-    position::Point3{Tp}
-    scalars::MVector{N,T}
+function Point(p, s) where {P<:NTuple{Np,Tp, S<:NTuple{Ns,Ts} where {Np,Tp,Ns,Ts}}}
+    Point{length(p),eltype(p),length(s),eltype(s)}(SVector{length(p),eltype(p)}(p), SVector{length(s),eltype(s)}(s))
 end
 
-struct Particle4{Tp,Ts,N}
-    position::Point4{Tp}
-    scalars::MVector{N,T}
+function Point(p, s)
+    Point{length(p),eltype(p),length(s),eltype(s)}(SVector{length(p),eltype(p)}(p), SVector{length(s),eltype(s)}(s))
 end
 
-const Point2Path{Tp,Ts,N} = Vector{Point2{Tp,Ts,N}}
-const Point3Path{Tp,Ts,N} = Vector{Point3{Tp,Ts,N}}
-const Point4Path{Tp,Ts,N} = Vector{Point4{Tp,Ts,N}}
+Point(p::NTuple{Np,Tp}, s::NTuple{Ns,Ts}) where {Np,Tp,Ns,Ts} = Point{Np,Tp,Ns,Ts}(SVector{Np,Tp}(p), SVector{Ns,Ts}(s))
+Point(p::NTuple{Np,Tp}, s::NTuple{0}) where {Np,Tp} = Point{Np,Tp,0,UInt8}(SVector{Np,Tp}(p), SVector{0,UInt8}(s))
 
-const Particle2Path{Tp,Ts,N} = Vector{Particle2{Tp,Ts,N}}
-const Particle3Path{Tp,Ts,N} = Vector{Particle3{Tp,Ts,N}}
-const Particle4Path{Tp,Ts,N} = Vector{Particle4{Tp,Ts,N}}
+Base.ndims(p::Point{Np,Tp,Ns,Ts}) where {Np,Tp,Ns,Ts} = Np
+
+"""
+PathMeta{V}
+
+A is any subtype of AbstractVector.
+
+
+```
+tmpvec = [Point((1,1),()),Point((1,1),())]
+tmpdict = Dict{String,Any}()
+PathMeta(tmpvec, tmpdict)
+```
+
+"""
+const PathMeta{V} = ImageMeta{T,1,V} where {V<:AbstractVector, T<:Point{Np,Tp,Ns,Ts} where {Np,Tp,Ns,Ts}}
+function PathMeta(data::AbstractVector{<:Point}, props::Dict{String,Any})
+    ImageMeta(data, props)
+end
+
+function load(s, ::Type{PathMeta{Vector}})
+    ImageMeta(load(s, fieldtype(PathMeta, :data)))
+end
+
+"""
+const Point2{N,T} = Point{2,Int,N,T}
+Point2(p::NTuple{2,Int}, s::NTuple{N,T}) where {N,T} = Point{2,Int,N,T}(p, s)
+
+const Point2f0{N,T} = Point{2,Float32,N,T}
+Point2(p::NTuple{2,Float32}, s::NTuple{N,T}) where {N,T} = Point2f0{N,T}(SVector{2,Float32}(p), SVector{N,T}(s))
+
+
+const Point3{N,T} = Point{3,Int,N,T}
+Point3(p::NTuple{3,Int}, s::NTuple{N,T}) where {N,T} = Point{N,T}(SVector{3,Int}(p), SVector{N,T}(s))
+
+const Point3f0{N,T} = Point{3,Float32,N,T}
+Point2(p::NTuple{3,Float32}, s::NTuple{N,T}) where {N,T} = Point3f0{N,T}(SVector{3,Float32}(p), SVector{N,T}(s))
+function SPathMeta(data::SVector{L,Point{Sp,Tp,Ss,Ts}},  props::Dict{String,Any}) where {Sp,Tp,Ss,Ts,L}
+    SPathMeta{Sp,Tp,Ss,Ts,L}(data, props)
+end
+
+function MPathMeta(data::MVector{L,Point{Sp,Tp,Ss,Ts}},  props::Dict{String,Any}) where {Sp,Tp,Ss,Ts,L}
+    MPathMeta{Sp,Tp,Ss,Ts,L}(data, props)
+end
+"""
+
+
 
 
 
